@@ -1,0 +1,5 @@
+The selected feature is Timed Mode. In this mode each player has a limited amount of time, such as 30 seconds, to make their move. If the player does not act before the timer expires, their turn automatically ends. This changes the pace of the game by forcing quicker decisions.
+
+The feature is implemented in the main menu so the user can enable Timed Mode before starting a match. The timer logic is handled in the controller, the model updates the game state when the timer runs out, and the view displays the countdown to the player.
+
+Contributing team members: Marc Aoun implemented all parts of this feature including menu integration, timer logic, model updates, and the view changes.
