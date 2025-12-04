@@ -37,4 +37,10 @@ public interface UnoView {
      */
     void updateWinner(String winner, int score);
 
+    /**
+     * Updates the timer display for timed mode turns.
+     * @param msg text describing the remaining time or timer status
+     */
+    void updateTurnTimer(String msg);
+
 }

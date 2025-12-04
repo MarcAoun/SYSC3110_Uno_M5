@@ -3,6 +3,7 @@ import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import javax.swing.Timer;
 
 /**
  * The UnoController connects the UnoModel, UnoView, and UnoFrame.
@@ -22,6 +23,18 @@ public class UnoController implements ActionListener {
     private boolean handlingAITurn;
     /** Holds the last status message from an AI action so it can be shown alongside turn handoff text. */
     private String pendingAIStatusMessage;
+
+    /** Whether timed mode is active. */
+    private final boolean timedMode;
+
+    /** Seconds allowed per turn in timed mode. */
+    private final int turnTimeLimitSeconds;
+
+    /** Swing timer used to count down the current player's turn. */
+    private Timer turnTimer;
+
+    /** Remaining seconds on the active turn timer. */
+    private int remainingSeconds;
 
     /**
      *Updates the status message for AI players
@@ -50,6 +63,60 @@ public class UnoController implements ActionListener {
         isAdvanced = false;
         handlingAITurn = false;
         pendingAIStatusMessage = null;
+        timedMode = frame.isTimedMode();
+        turnTimeLimitSeconds = frame.getTurnTimeLimitSeconds();
+        turnTimer = null;
+        remainingSeconds = 0;
+        if (!timedMode) {
+            view.updateTurnTimer("Disabled");
+        }
+    }
+
+    /** Stops any active turn timer. */
+    private void stopTurnTimer() {
+        if (turnTimer != null) {
+            turnTimer.stop();
+            turnTimer = null;
+        }
+    }
+
+    /** Starts or restarts the timer for the current player when timed mode is enabled. */
+    private void startTurnTimerForCurrentPlayer() {
+        stopTurnTimer();
+        if (!timedMode) {
+            return;
+        }
+
+        if (model.getCurrPlayer().isAI()) {
+            view.updateTurnTimer("AI Turn");
+            return;
+        }
+
+        remainingSeconds = turnTimeLimitSeconds;
+        view.updateTurnTimer(remainingSeconds + "s");
+        turnTimer = new Timer(1000, event -> {
+            remainingSeconds--;
+            if (remainingSeconds <= 0) {
+                handleTurnTimeout();
+            } else {
+                view.updateTurnTimer(remainingSeconds + "s");
+            }
+        });
+        turnTimer.start();
+    }
+
+    /** Handles the expiration of a player's turn timer by advancing the turn automatically. */
+    private void handleTurnTimeout() {
+        stopTurnTimer();
+        view.updateTurnTimer("Time's up!");
+        view.updateStatusMessage(model.getCurrPlayer().getName() + " ran out of time. Turn passed to next player.");
+        isAdvanced = false;
+        model.advance();
+        view.updateHandPanel(model, this);
+        frame.enableCards();
+        updateStatusWithPending("Turn passed to " + model.getCurrPlayer().getName() + ".");
+        startTurnTimerForCurrentPlayer();
+        maybeRunAITurn();
     }
 
     /**
@@ -145,6 +212,7 @@ public class UnoController implements ActionListener {
         // Update initial status message
         view.updateStatusMessage("Game started. It is " + model.getCurrPlayer().getName() + "'s turn.");
 
+        startTurnTimerForCurrentPlayer();
         maybeRunAITurn();
     }
 
@@ -183,6 +251,7 @@ public class UnoController implements ActionListener {
                     view.updateHandPanel(model, this);
                     frame.enableCards();
                     updateStatusWithPending("Loaded game. It is " + model.getCurrPlayer().getName() + "'s turn.");
+                    startTurnTimerForCurrentPlayer();
                     maybeRunAITurn();
                 } catch (IOException | ClassNotFoundException ex) {
                     frame.showError("Unable to load game: " + ex.getMessage());
@@ -216,6 +285,7 @@ public class UnoController implements ActionListener {
                     view.updateHandPanel(model, this);
                     frame.enableCards();
                     view.updateStatusMessage("New round started. It is " + model.getCurrPlayer().getName() + "'s turn.");
+                    startTurnTimerForCurrentPlayer();
                     maybeRunAITurn();
                 }
             } else {
@@ -224,6 +294,7 @@ public class UnoController implements ActionListener {
                 isAdvanced = false;
                 updateStatusWithPending("Turn passed to " + model.getCurrPlayer().getName() + ".");
             }
+            startTurnTimerForCurrentPlayer();
             maybeRunAITurn();
         }
         // Handle "Draw Card" button presses
@@ -431,6 +502,7 @@ public class UnoController implements ActionListener {
                     boolean matchOver = model.checkWinner(winner);
                     if (matchOver) {
                         view.updateStatusMessage("Game over: " + winner.getName() + " wins the game, reaching 500 or more points.");
+                        stopTurnTimer();
                         frame.disableAllButtons();
 
                         String option = frame.newGameSelectionDialog();
@@ -443,6 +515,8 @@ public class UnoController implements ActionListener {
                             view.updateHandPanel(model, this);
                             frame.enableCards();
                             view.updateStatusMessage("New game started. It is " + model.getCurrPlayer().getName() + "'s turn.");
+                            startTurnTimerForCurrentPlayer();
+                            maybeRunAITurn();
                         }
                         return;
                     } else {
@@ -455,6 +529,7 @@ public class UnoController implements ActionListener {
                             frame.enableCards();
                             isAdvanced = false;
                             view.updateStatusMessage("New round started. It is " + model.getCurrPlayer().getName() + "'s turn.");
+                            startTurnTimerForCurrentPlayer();
                             maybeRunAITurn();
                         }
                     }
@@ -498,6 +573,7 @@ public class UnoController implements ActionListener {
                     break;
                 }
             }
+            startTurnTimerForCurrentPlayer();
         } finally {
             handlingAITurn = false;
         }
