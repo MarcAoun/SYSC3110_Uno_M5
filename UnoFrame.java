@@ -39,6 +39,9 @@ public class UnoFrame implements UnoView {
     /** Status message area for game feedback. */
     private JLabel statusLabel;
 
+    /** Label showing the current turn timer. */
+    private JLabel timerLabel;
+
     /** Button to draw a new card. */
     private JButton drawButton;
 
@@ -60,6 +63,12 @@ public class UnoFrame implements UnoView {
     /** Parallel list indicating whether each player is an AI (true) or human (false). */
     private java.util.List<Boolean> aiPlayers;
 
+    /** Whether the game is running in timed mode. */
+    private boolean timedMode;
+
+    /** Number of seconds allotted per turn when timed mode is enabled. */
+    private final int turnTimeLimitSeconds = 30;
+
     /**
      * Constructs the game window and initializes all graphical components.
      */
@@ -79,7 +88,7 @@ public class UnoFrame implements UnoView {
 
         // ----- Top info panel: Current player + Status message -----
         JPanel infoPanel = new JPanel();
-        infoPanel.setLayout(new GridLayout (2, 1));
+        infoPanel.setLayout(new GridLayout (3, 1));
         currentPlayerLabel = new JLabel("Current Player: ", JLabel.CENTER);
         currentPlayerLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
         infoPanel.add(currentPlayerLabel);
@@ -87,6 +96,9 @@ public class UnoFrame implements UnoView {
         statusLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
         statusLabel.setForeground(Color.red);
         infoPanel.add(statusLabel);
+        timerLabel = new JLabel("Turn Timer: --", JLabel.CENTER);
+        timerLabel.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        infoPanel.add(timerLabel);
         frame.add(infoPanel, BorderLayout.NORTH);
 
         // ----- Scoreboard Panel -----
@@ -144,6 +156,24 @@ public class UnoFrame implements UnoView {
         frame.add(controlPanel, BorderLayout.EAST);
 
         frame.setVisible (true);
+
+        // ----- Mode Selection -----
+        String[] modeOptions = {"Standard Mode", "Timed Mode"};
+        int modeChoice = JOptionPane.showOptionDialog(
+                frame,
+                "Choose a game mode:",
+                "Main Menu",
+                JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                modeOptions,
+                modeOptions[0]
+        );
+
+        if (modeChoice == JOptionPane.CLOSED_OPTION) {
+            System.exit(0);
+        }
+        timedMode = modeChoice == 1;
 
         // ----- Prompt Player Count -----
         String[] playerOptions = {"2", "3", "4"};
@@ -229,6 +259,16 @@ public class UnoFrame implements UnoView {
     /** @return the scoreboard panel. */
     public JPanel getScoreBoardPanel() {
         return scoreBoardPanel;
+    }
+
+    /** @return true if timed mode is enabled. */
+    public boolean isTimedMode() {
+        return timedMode;
+    }
+
+    /** @return number of seconds allowed per turn when timed mode is active. */
+    public int getTurnTimeLimitSeconds() {
+        return turnTimeLimitSeconds;
     }
 
     /** @return the status message label. */
@@ -379,6 +419,15 @@ public class UnoFrame implements UnoView {
     /** @return list of AI flags aligned with getPlayerName(): true = AI, false = Human. */
     public List<Boolean> getAiPlayers() {
         return aiPlayers;
+    }
+
+    /**
+     * Updates the timer label text.
+     * @param msg display text for the timer
+     */
+    @Override
+    public void updateTurnTimer(String msg) {
+        timerLabel.setText("Turn Timer: " + msg);
     }
 
     /**
